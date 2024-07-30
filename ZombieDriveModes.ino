@@ -60,8 +60,8 @@ int motorrpm;
 //Outputs
 
 int32_t ChangeThrotRamp;
-int32_t ChangeThrotMax;
-int GearChange;
+int32_t ChangeThrotMax = 100;
+int GearChange = 1;
 uint8_t CTR1 = ChangeThrotMax >> 0;
 uint8_t CTR2 = ChangeThrotMax >> 8;
 uint8_t CTR3 = ChangeThrotMax >> 16;
@@ -163,47 +163,28 @@ void setstates() {
 void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
   if (buttonstate1 == LOW) { // Sport
-    Serial.println("Sport button Pressed");
-    if (DriveMode == 3) { // If c0oming out of drift mode, only when rpm is 0.
-      if (motorrpm == 0) {
-        ChangeThrotMax = 3200;
-        GearChange = 32;
-        CTR1 = ChangeThrotMax >> 0;
-        CTR2 = ChangeThrotMax >> 8;
-        CTR3 = ChangeThrotMax >> 16;
-        CTR4 = ChangeThrotMax >> 24;
-        unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap); // 25 ios value of throt max in params.h
-        Serial.println("Going from drift to sport mode");
-        CTR1 = GearChange >> 0;
-        CTR2 = GearChange >> 8;
-        CTR3 = GearChange >> 16;
-        CTR4 = GearChange >> 24;
-         unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap2);
-        DriveMode = 1;
-      }
-    }
-    else
-    {
+  
+    
       ChangeThrotMax = 3200;
       GearChange = 32;
       CTR1 = ChangeThrotMax >> 0;
       CTR2 = ChangeThrotMax >> 8;
       CTR3 = ChangeThrotMax >> 16;
       CTR4 = ChangeThrotMax >> 24;
-      unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
-      CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap); //25 is value of throt max in params.h
+      unsigned char Changemap[8] = {0x23, 0x00, 0x21, 0x19, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
+      //unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
+      CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
       CTR1 = GearChange >> 0;
       CTR2 = GearChange >> 8;
       CTR3 = GearChange >> 16;
       CTR4 = GearChange >> 24;
-       unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
-      CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap2);
+      unsigned char Changemap2[8] = {0x23, 0x00, 0x21, 0x1B, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
+      //unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
+      CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
       Serial.println("Changing to Sport mode");
       DriveMode = 1;
     }
-  }
+  
 
 
 
@@ -211,79 +192,49 @@ void ButtonPress() {
   byte buttonstate2 = digitalRead(ButtonEco);
   if (buttonstate2 == LOW) { //Eco
     Serial.println("Eco button Pressed");
-    if (DriveMode == 3) { // If coming out of drift mode, only when rpm is 0.
-      if (motorrpm == 0) {
-        ChangeThrotMax = 320;
-        GearChange = 32;
-        CTR1 = ChangeThrotMax >> 0;
-        CTR2 = ChangeThrotMax >> 8;
-        CTR3 = ChangeThrotMax >> 16;
-        CTR4 = ChangeThrotMax >> 24;
-        unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap); //25 is value of throt max in params.h
-        CTR1 = GearChange >> 0;
-        CTR2 = GearChange >> 8;
-        CTR3 = GearChange >> 16;
-        CTR4 = GearChange >> 24;
-        unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //27 is value of gear in params.h
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap2);
-        Serial.println("Going from drift to Eco");
-        DriveMode = 2;
-      }
-    }
-    else
-    {
-      ChangeThrotMax = 320;
-      GearChange = 32;
-      CTR1 = ChangeThrotMax >> 0;
-      CTR2 = ChangeThrotMax >> 8;
-      CTR3 = ChangeThrotMax >> 16;
-      CTR4 = ChangeThrotMax >> 24;
-      unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
-      CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap); //25 is value of throt max in params.h
-      CTR1 = GearChange >> 0;
-      CTR2 = GearChange >> 8;
-      CTR3 = GearChange >> 16;
-      CTR4 = GearChange >> 24;
-      unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //27 is value of gear in params.h
-      CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap2);
-      Serial.println("Changing to Eco mode");
-      DriveMode = 2;
-    }
+    ChangeThrotMax = 640;
+    GearChange = 32;
+    CTR1 = ChangeThrotMax >> 0;
+    CTR2 = ChangeThrotMax >> 8;
+    CTR3 = ChangeThrotMax >> 16;
+    CTR4 = ChangeThrotMax >> 24;
+    unsigned char Changemap[8] = {0x23, 0x00, 0x21, 0x19, CTR1, CTR2, CTR3, CTR4}; // currently just changing throttle Max, so set to one parameter
+    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
+    CTR1 = GearChange >> 0;
+    CTR2 = GearChange >> 8;
+    CTR3 = GearChange >> 16;
+    CTR4 = GearChange >> 24;
+    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, 0x1B, CTR1, CTR2, CTR3, CTR4}; //27 is value of gear in params.h
+    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
+    Serial.println("Changing to Eco mode");
+    DriveMode = 2;
   }
-  byte buttonstate3 = digitalRead(ButtonDrift);
-  if (buttonstate3 == LOW) { //Drift
-    Serial.println("Drift button Pressed");
-    if (DriveMode == 3) { // do nothing becuase its also in this mode
-      Serial.println("Already in Drift mode");
-    }
-    else
-    {
-      if (motorrpm == 0) {
-        ChangeThrotMax = 3200;
-        GearChange = 0;// still to implement
-        CTR1 = ChangeThrotMax >> 0;
-        CTR2 = ChangeThrotMax >> 8;
-        CTR3 = ChangeThrotMax >> 16;
-        CTR4 = ChangeThrotMax >> 24;
-        unsigned char Changemap[8] = {0x23, 0x01, 0x20, 25, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap);
-        CTR1 = GearChange >> 0;
-        CTR2 = GearChange >> 8;
-        CTR3 = GearChange >> 16;
-        CTR4 = GearChange >> 24;
-        unsigned char Changemap2[8] = {0x23, 0x01, 0x20, 27, CTR1, CTR2, CTR3, CTR4}; //27 is value of gear in params.h
-        CAN.MCP_CAN::sendMsgBuf(0x601, 0, 8, Changemap2);
 
-        Serial.println("Changing to Drift mode");
-        DriveMode = 3;
-      }
-    }
-  }
+byte buttonstate3 = digitalRead(ButtonDrift);
+if (buttonstate3 == LOW) { //Drift
+  Serial.println("Drift button Pressed");
+  ChangeThrotMax = 3200;
+  GearChange = 0;// still to implement
+  CTR1 = ChangeThrotMax >> 0;
+  CTR2 = ChangeThrotMax >> 8;
+  CTR3 = ChangeThrotMax >> 16;
+  CTR4 = ChangeThrotMax >> 24;
+  unsigned char Changemap[8] = {0x23, 0x00, 0x21, 0x19, CTR1, CTR2, CTR3, CTR4}; //25 is value of throt max in params.h
+  CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap);
+  CTR1 = GearChange >> 0;
+  CTR2 = GearChange >> 8;
+  CTR3 = GearChange >> 16;
+  CTR4 = GearChange >> 24;
+  unsigned char Changemap2[8] = {0x23, 0x00 , 0x21, 0x1B, CTR1, CTR2, CTR3, CTR4}; //27 is value of gear in params.h
+  CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
+
+  Serial.println("Changing to Drift mode");
+  DriveMode = 3;
 }
 
 
 
+}
 void LightLED() {
   switch (DriveMode) {
     case 1:
