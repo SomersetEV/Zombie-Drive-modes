@@ -58,6 +58,7 @@ int ThrotRamp;
 int ThrotMax;
 int Gear;
 int RegenMax;
+int regenincrement = 0;
 int rpm = 50;
 int regenendrpm;
 int regenstate = 1; //default regen state  on
@@ -113,7 +114,7 @@ void canbusread() {
     if (canId == 394) {
       rpm = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
       Serial.println(rpm);
-     
+
     }
   }
 }
@@ -135,7 +136,7 @@ void ButtonPress() {
     CTR2 = ChangeThrotMax >> 8;
     CTR3 = ChangeThrotMax >> 16;
     CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
 
     // gear change
@@ -143,7 +144,7 @@ void ButtonPress() {
     CTR2 = GearChange >> 8;
     CTR3 = GearChange >> 16;
     CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
 
     //ThrotRamp
@@ -151,7 +152,7 @@ void ButtonPress() {
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); //25 is value of throt max in params.h
 
     // Regen
@@ -159,7 +160,7 @@ void ButtonPress() {
     CTR2 = RegenMax >> 8;
     CTR3 = RegenMax >> 16;
     CTR4 = RegenMax >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
     //CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); //25 is value of throt max in params.h  // dont set regen anymore, regenadjust function does this.
 
 
@@ -184,21 +185,21 @@ void ButtonPress() {
     CTR2 = ChangeThrotMax >> 8;
     CTR3 = ChangeThrotMax >> 16;
     CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
     // gear change
     CTR1 = GearChange >> 0;
     CTR2 = GearChange >> 8;
     CTR3 = GearChange >> 16;
     CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
     //ThrotRamp
     CTR1 = ChangeThrotRamp >> 0;
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); //25 is value of throt max in params.h
 
     // Regen
@@ -206,7 +207,7 @@ void ButtonPress() {
     CTR2 = RegenMax >> 8;
     CTR3 = RegenMax >> 16;
     CTR4 = RegenMax >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
     //CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); //25 is value of throt max in params.h  // dont set regen anymore, regenadjust function does this.
 
     Serial.println("Changing to Eco mode");
@@ -226,7 +227,7 @@ void ButtonPress() {
     CTR2 = ChangeThrotMax >> 8;
     CTR3 = ChangeThrotMax >> 16;
     CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap);
 
     // gear change
@@ -234,7 +235,7 @@ void ButtonPress() {
     CTR2 = GearChange >> 8;
     CTR3 = GearChange >> 16;
     CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00 , 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap2[8] = {0x23, 0x00 , 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
 
     //ThrotRamp
@@ -242,8 +243,8 @@ void ButtonPress() {
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4}; 
-     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); 
+    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
+    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3);
 
     // Regen
     CTR1 = RegenMax >> 0;
@@ -251,7 +252,7 @@ void ButtonPress() {
     CTR3 = RegenMax >> 16;
     CTR4 = RegenMax >> 24;
     unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); 
+    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4);
 
 
     Serial.println("Changing to Drift mode");
@@ -301,17 +302,23 @@ void Regenendadjust() { // adjust regenmax to avoid regen being active around re
     unsigned char Changemap5[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); //25 is value of throt max in params.h
     regenstate = 0;
+    regenincrement = 0;
   }
 
-  if (rpm > 1000 && regenstate == 0 && DriveMode < 3) { // adjust regenmax to avoid regen being active around regenendrpm, dont enable regen in drift mode, 
-    regenendrpm = -25 * 32; //actually setting regen max
+  if (rpm > 700 && regenstate == 0  && DriveMode < 3) { // adjust regenmax to avoid regen being active around regenendrpm, dont enable regen in drift mode,
+    regenincrement = regenincrement + 7;
+    if (regenincrement > 704) {
+      regenincrement = 704;
+      regenstate = 1;
+    }
+    regenendrpm = -704;//regenincrement * -1; //actually setting regen max
     CTR1 =  regenendrpm >> 0;
     CTR2 =  regenendrpm >> 8;
     CTR3 =  regenendrpm >> 16;
     CTR4 =  regenendrpm >> 24;
-    unsigned char Changemap6[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4}; 
+    unsigned char Changemap6[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap6);
-    regenstate = 1;
+    //regenstate = 1;
   }
 
 }
