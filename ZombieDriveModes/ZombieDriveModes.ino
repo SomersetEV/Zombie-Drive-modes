@@ -171,7 +171,7 @@ void ButtonPress() {
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
+    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
 
 
@@ -214,21 +214,21 @@ void ButtonPress() {
     CTR4 = Motoract >> 24;
     unsigned char Changemap3[8] = {0x23, 0x00, 0x21, blendedid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); 
-*/
+
     // Regen
     CTR1 = RegenMax >> 0;
     CTR2 = RegenMax >> 8;
     CTR3 = RegenMax >> 16;
     CTR4 = RegenMax >> 24;
     unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); /
+    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); 
 
      // throtramp
     CTR1 = ChangeThrotRamp >> 0;
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
+    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
 
 
@@ -240,7 +240,7 @@ void ButtonPress() {
   if (buttonstate3 == LOW) { //Drift
     Serial.println("Drift button Pressed");
     // change params, values * 32
-    ChangeThrotMax = 100 * v32;
+    ChangeThrotMax = 100 * 32;
     GearChange = 0; //low gear
     RegenMax = 0;
     Motoract = 0; // no blending
@@ -282,7 +282,7 @@ void ButtonPress() {
     CTR2 = ChangeThrotRamp >> 8;
     CTR3 = ChangeThrotRamp >> 16;
     CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
+    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
     CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
 
 
