@@ -1,5 +1,9 @@
-// demo: CAN-BUS Shield, receive data with check mode
-// send data coming to fast, such as less than 10ms, you can use this way
+
+
+//Change drive modes on zombieverter, using Arduino Uno and canshield
+// Ben Bament 2024-2025
+
+// based on orignal code from:
 // loovee, 2014-6-13
 #include <SPI.h>
 #include <Chrono.h>
@@ -76,7 +80,7 @@ int blendedid = 0x81;
 
 int32_t ChangeThrotRamp;
 int32_t ChangeThrotMax = 100;
-int GearChange = 1;
+int GearChange;
 int Motoract = 3;
 uint8_t CTR1 = ChangeThrotMax >> 0;
 uint8_t CTR2 = ChangeThrotMax >> 8;
@@ -104,7 +108,7 @@ void setup() {
   pinMode(ButtonDrift, INPUT_PULLUP);
 
 }
-
+/*
 void canbusread() {
   unsigned char len = 0;
   unsigned char buf[8];
@@ -120,7 +124,7 @@ void canbusread() {
     }
   }
 }
-
+*/
 
 void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
@@ -357,12 +361,12 @@ void Regenendadjust() { // adjust regenmax to avoid regen being active around re
 */
 
 void loop() {
-  canbusread();
+ // canbusread();
   //setstates();
   if (myChrono.hasPassed(50) ) { // elapsed(50) returns 1 if 50ms have passed.
     myChrono.restart();  // restart the Chrono
     ButtonPress();
-  //  Regenendadjust();
+  //Regenendadjust();
     LightLED();
   }
 
