@@ -19,7 +19,7 @@ Chrono myChrono;
 // Channel 0 SPI_CS Pin: BCM 8
 // Channel 1 SPI_CS Pin: BCM 7
 // Interupt Pin: BCM25
-const int SPI_CS_PIN  = BCM8;
+const int SPI_CS_PIN = BCM8;
 const int CAN_INT_PIN = BCM25;
 #else
 
@@ -33,24 +33,24 @@ const int CAN_INT_PIN = 2;
 
 #ifdef CAN_2518FD
 #include "mcp2518fd_can.h"
-mcp2518fd CAN(SPI_CS_PIN); // Set CS pin
+mcp2518fd CAN(SPI_CS_PIN);  // Set CS pin
 #endif
 
 #ifdef CAN_2515
 #include "mcp2515_can.h"
-mcp2515_can CAN(SPI_CS_PIN); // Set CS pin
+mcp2515_can CAN(SPI_CS_PIN);  // Set CS pin
 #endif
 
 //drive mode
 //input buttons
 #define ButtonSport 5
-#define ButtonEco 4
-#define ButtonDrift 3
+#define ButtonRegen 4
+#define ButtonChill 3
 
 // output for LEDs
 #define LightSport 6
-#define LightEco 7
-#define LightDrift 8
+#define LightRegen 7
+#define LightChill 8
 
 char str[20];
 
@@ -58,41 +58,29 @@ char str[20];
 int DriveMode = 1;
 
 //Inputs
-int ThrotRamp;
-int ThrotMax;
-int Gear;
-int RegenMax;
-int regenincrement = 0;
-int rpm = 50;
-int regenendrpm;
-int regenstate = 1; //default regen state  on
+int soc;
+int dischargevoltagelimit;
+int dischargecurrentlimit;
+int chargevoltagelimit;
+int chargecurrentlimit;
+int batteryvoltage;
 
 // parameter IDs
-int throtmaxid = 0x19;
-int throtrampid = 0xD;
-int regenmaxid = 0x3D;
-int gearchangeid = 0x1B;
-int regenendrpmid = 0x7E;
-int blendedid = 0x81;
-
+int Motorlimits = 0x696;
 
 //Outputs
+int PowerMax;
+int RegenMax;
+int Regenlimit;
+int Dischargelimit;
 
-int32_t ChangeThrotRamp;
-int32_t ChangeThrotMax = 100;
-int GearChange;
-int Motoract = 3;
-uint8_t CTR1 = ChangeThrotMax >> 0;
-uint8_t CTR2 = ChangeThrotMax >> 8;
-uint8_t CTR3 = ChangeThrotMax >> 16;
-uint8_t CTR4 = ChangeThrotMax >> 24;
 
 
 
 void setup() {
   SERIAL_PORT_MONITOR.begin(115200);
 
-  while (CAN_OK != CAN.begin(CAN_500KBPS)) {             // init can bus : baudrate = 500k
+  while (CAN_OK != CAN.begin(CAN_500KBPS)) {  // init can bus : baudrate = 500k
     SERIAL_PORT_MONITOR.println("CAN init fail, retry...");
     delay(100);
   }
@@ -100,276 +88,156 @@ void setup() {
 
   // pin setup
   pinMode(LightSport, OUTPUT);
-  pinMode(LightEco, OUTPUT);
-  pinMode(LightDrift, OUTPUT);
+  pinMode(LightRegen, OUTPUT);
+  pinMode(LightChill, OUTPUT);
 
   pinMode(ButtonSport, INPUT_PULLUP);
-  pinMode(ButtonEco, INPUT_PULLUP);
-  pinMode(ButtonDrift, INPUT_PULLUP);
-
+  pinMode(ButtonRegen, INPUT_PULLUP);
+  pinMode(ButtonChill, INPUT_PULLUP);
 }
-/*
+
 void canbusread() {
   unsigned char len = 0;
   unsigned char buf[8];
 
-  if (CAN_MSGAVAIL == CAN.checkReceive()) {         // check if data coming
-    CAN.readMsgBuf(&len, buf);    // read data,  len: data length, buf: data buf
+  if (CAN_MSGAVAIL == CAN.checkReceive()) {  // check if data coming
+    CAN.readMsgBuf(&len, buf);               // read data,  len: data length, buf: data buf
 
     unsigned long canId = CAN.getCanId();
-    if (canId == 394) {
-      rpm = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
-      Serial.println(rpm);
-
+    if (canId == 351) {
+      dischargevoltagelimit = ((uint16_t)buf[6] | ((uint16_t)buf[7] << 8)) * 10;  // in 0.1 scale
+      dischargecurrentlimit = ((uint16_t)buf[4] | ((uint16_t)buf[5] << 8)) * 10;  // in 0.1 scale
+      chargevoltagelimit = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 10;     // in 0.1 scale
+      chargecurrentlimit = ((uint16_t)buf[2] | ((uint16_t)buf[3] << 8)) * 10;     // in 0.1 scale
+      Serial.println("charge current limit");
+      Serial.print(chargecurrentlimit);
+    }
+    if (canId == 356) {
+      batteryvoltage = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 10;  // in 0.1 scale
+      Serial.println("battery voltage:");
+      Serial.print(batteryvoltage);
     }
   }
 }
-*/
+
 
 void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
-  if (buttonstate1 == LOW) { // Sport
+  if (buttonstate1 == LOW) {  // Sport
 
-    // change params, all values * 32.
-    ChangeThrotMax = 3200; // max throttle
-    GearChange = 32; // High gear
-    RegenMax = -20 * 32;
-    Motoract = 0 * 32; // no blending, just MG1 and 2
-    ChangeThrotRamp = 4 * 32;
-
-
-    // throt max
-    CTR1 = ChangeThrotMax >> 0;
-    CTR2 = ChangeThrotMax >> 8;
-    CTR3 = ChangeThrotMax >> 16;
-    CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
-
-    // gear change
-    CTR1 = GearChange >> 0;
-    CTR2 = GearChange >> 8;
-    CTR3 = GearChange >> 16;
-    CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
-   
-    //Blended Motors
-    CTR1 = Motoract >> 0;
-    CTR2 = Motoract >> 8;
-    CTR3 = Motoract >> 16;
-    CTR4 = Motoract >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, blendedid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); //
-
-    // Regen
-    CTR1 = RegenMax >> 0;
-    CTR2 = RegenMax >> 8;
-    CTR3 = RegenMax >> 16;
-    CTR4 = RegenMax >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); 
-
-     // throtramp
-    CTR1 = ChangeThrotRamp >> 0;
-    CTR2 = ChangeThrotRamp >> 8;
-    CTR3 = ChangeThrotRamp >> 16;
-    CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
-
+    // change params. units in kW
+    PowerMax = 75;
+    RegenMax = 26;
 
     Serial.println("Changing to Sport mode");
     DriveMode = 1;
   }
 
+  byte buttonstate2 = digitalRead(ButtonRegen);
+  if (buttonstate2 == LOW) {  //Eco
+    Serial.println("Regen button Pressed");
 
+    // change params. units in kW
+    PowerMax = 75;
+    RegenMax = 26;
 
-
-
-  byte buttonstate2 = digitalRead(ButtonEco);
-  if (buttonstate2 == LOW) { //Eco
-    Serial.println("Eco button Pressed");
-    // change params, values * 32
-    ChangeThrotMax = 50 * 32;
-    GearChange = 2 * 32; // auto
-    RegenMax = -20 * 32;
-    Motoract = 3 * 32; //blending
-    ChangeThrotRamp = .5 * 32;
-    // throtmax
-    CTR1 = ChangeThrotMax >> 0;
-    CTR2 = ChangeThrotMax >> 8;
-    CTR3 = ChangeThrotMax >> 16;
-    CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap); //25 is value of throt max in params.h
-    // gear change
-    CTR1 = GearChange >> 0;
-    CTR2 = GearChange >> 8;
-    CTR3 = GearChange >> 16;
-    CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00, 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
-    
-    //blended Motors
-    CTR1 = Motoract >> 0;
-    CTR2 = Motoract >> 8;
-    CTR3 = Motoract >> 16;
-    CTR4 = Motoract >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, blendedid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3); 
-
-    // Regen
-    CTR1 = RegenMax >> 0;
-    CTR2 = RegenMax >> 8;
-    CTR3 = RegenMax >> 16;
-    CTR4 = RegenMax >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4); 
-
-     // throtramp
-    CTR1 = ChangeThrotRamp >> 0;
-    CTR2 = ChangeThrotRamp >> 8;
-    CTR3 = ChangeThrotRamp >> 16;
-    CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
-
-
-    Serial.println("Changing to Eco mode");
+    Serial.println("Changing to Regen mode");
     DriveMode = 2;
   }
 
-  byte buttonstate3 = digitalRead(ButtonDrift);
-  if (buttonstate3 == LOW) { //Drift
-    Serial.println("Drift button Pressed");
-    // change params, values * 32
-    ChangeThrotMax = 100 * 32;
-    GearChange = 0; //low gear
-    RegenMax = 0;
-    Motoract = 0; // no blending
-    ChangeThrotRamp = 4 * 32;
-    //throt max
-    CTR1 = ChangeThrotMax >> 0;
-    CTR2 = ChangeThrotMax >> 8;
-    CTR3 = ChangeThrotMax >> 16;
-    CTR4 = ChangeThrotMax >> 24;
-    unsigned char Changemap[8] = {0x23, 0x00, 0x21, throtmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap);
+  byte buttonstate3 = digitalRead(ButtonChill);
+  if (buttonstate3 == LOW) {  //Drift
+    Serial.println("Chill button Pressed");
 
-    // gear change
-    CTR1 = GearChange >> 0;
-    CTR2 = GearChange >> 8;
-    CTR3 = GearChange >> 16;
-    CTR4 = GearChange >> 24;
-    unsigned char Changemap2[8] = {0x23, 0x00 , 0x21, gearchangeid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap2);
+    // change params. units in kW
+    PowerMax = 75;
+    RegenMax = 26;
 
-    //blended Motors
-    CTR1 = Motoract >> 0;
-    CTR2 = Motoract >> 8;
-    CTR3 = Motoract >> 16;
-    CTR4 = Motoract >> 24;
-    unsigned char Changemap3[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap3);
-
-    // Regen
-    CTR1 = RegenMax >> 0;
-    CTR2 = RegenMax >> 8;
-    CTR3 = RegenMax >> 16;
-    CTR4 = RegenMax >> 24;
-    unsigned char Changemap4[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap4);
-
-     // throtramp
-    CTR1 = ChangeThrotRamp >> 0;
-    CTR2 = ChangeThrotRamp >> 8;
-    CTR3 = ChangeThrotRamp >> 16;
-    CTR4 = ChangeThrotRamp >> 24;
-    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, throtrampid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); 
-
-
-
-    Serial.println("Changing to Drift mode");
+    Serial.println("Changing to Chill mode");
     DriveMode = 3;
   }
+}
+void processlimits() {
+  Regenlimit = batteryvoltage * chargecurrentlimit;
+  Dischargelimit = batteryvoltage * dischargecurrentlimit;
+  switch (DriveMode) {
+    case 1:  //sport mode
+      PowerMax = 200;
+      RegenMax = 50;
+      if (PowerMax > Dischargelimit) {  //BMS overrides
+        PowerMax = Dischargelimit;
+      }
+      if (RegenMax > Regenlimit) {  //BMS overrides
+        RegenMax = Regenlimit;
+      }
+      break;
 
+    case 2:  // regen mode
+      PowerMax = 50;
+      RegenMax = 15;
+      if (PowerMax > Dischargelimit) {  //BMS overrides
+        PowerMax = Dischargelimit;
+      }
+      if (RegenMax > Regenlimit) {  //BMS overrides
+        RegenMax = Regenlimit;
+      }
+      break;
 
+    case 3:  // chill mode
+      PowerMax = 50;
+      RegenMax = 10;
+      if (PowerMax > Dischargelimit) {  //BMS overrides
+        PowerMax = Dischargelimit;
+      }
+      if (RegenMax > Regenlimit) {  //BMS overrides
+        RegenMax = Regenlimit;
+      }
+      break;
+  }
 
+  uint8_t CTR1 = RegenMax >> 0;
+  uint8_t CTR2 = RegenMax >> 8;
+  uint8_t CTR3 = PowerMax >> 0;
+  uint8_t CTR4 = PowerMax >> 8;
+
+  unsigned char Changemap5[8] = { CTR1, CTR2, CTR3, CTR4, 0x00, 0x00, 0x00, 0x00 };
+  CAN.MCP_CAN::sendMsgBuf(Motorlimits, 0, 8, Changemap5);
 }
 void LightLED() {
   switch (DriveMode) {
     case 1:
       digitalWrite(LightSport, HIGH);
-      digitalWrite(LightEco, LOW);
-      digitalWrite(LightDrift, LOW);
+      digitalWrite(LightRegen, LOW);
+      digitalWrite(LightChill, LOW);
       // Serial.println("sport light on");
       break;
 
     case 2:
-      digitalWrite(LightEco, HIGH);
+      digitalWrite(LightRegen, HIGH);
       digitalWrite(LightSport, LOW);
-      digitalWrite(LightDrift, LOW);
+      digitalWrite(LightChill, LOW);
       //  Serial.println("Eco light on");
       break;
 
     case 3:
-      digitalWrite(LightDrift, HIGH);
-      digitalWrite(LightEco, LOW);
+      digitalWrite(LightChill, HIGH);
+      digitalWrite(LightRegen, LOW);
       digitalWrite(LightSport, LOW);
       //  Serial.println("Drift light on");
       break;
-
-
   }
-
-
 }
-/*
-void Regenendadjust() { // adjust regenmax to avoid regen being active around regenendrpm
 
-  if (rpm <  500 && regenstate == 1) {
-    regenendrpm = 0 * 32; //actually setting regen max
-    CTR1 =  regenendrpm >> 0;
-    CTR2 =  regenendrpm >> 8;
-    CTR3 =  regenendrpm >> 16;
-    CTR4 =  regenendrpm >> 24;
-    unsigned char Changemap5[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap5); //25 is value of throt max in params.h
-    regenstate = 0;
-    regenincrement = 0;
-  }
-
-  if (rpm > 700 && regenstate == 0  && DriveMode < 3) { // adjust regenmax to avoid regen being active around regenendrpm, dont enable regen in drift mode,
-    regenincrement = regenincrement + 7;
-    if (regenincrement > 704) {
-      regenincrement = 704;
-      regenstate = 1;
-    }
-    regenendrpm = -704;//regenincrement * -1; //actually setting regen max
-    CTR1 =  regenendrpm >> 0;
-    CTR2 =  regenendrpm >> 8;
-    CTR3 =  regenendrpm >> 16;
-    CTR4 =  regenendrpm >> 24;
-    unsigned char Changemap6[8] = {0x23, 0x00, 0x21, regenmaxid, CTR1, CTR2, CTR3, CTR4};
-    CAN.MCP_CAN::sendMsgBuf(0x603, 0, 8, Changemap6);
-    //regenstate = 1;
-  }
-
-}
-*/
 
 void loop() {
- // canbusread();
-  //setstates();
-  if (myChrono.hasPassed(50) ) { // elapsed(50) returns 1 if 50ms have passed.
-    myChrono.restart();  // restart the Chrono
+  canbusread();
+
+  if (myChrono.hasPassed(100)) {  // elapsed(100) returns 1 if 100ms have passed.
+    myChrono.restart();           // restart the Chrono
     ButtonPress();
-  //Regenendadjust();
+    processlimits();
     LightLED();
   }
-
 }
 /*********************************************************************************************************
     END FILE
