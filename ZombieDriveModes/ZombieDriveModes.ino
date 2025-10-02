@@ -1,6 +1,6 @@
 
 
-//Change drive modes on zombieverter, using Arduino Uno and canshield
+//Change drive modes on EVcontrols, using Arduino Uno and canshield
 // Ben Bament 2024-2025
 
 // based on orignal code from:
@@ -56,6 +56,9 @@ char str[20];
 
 //States
 int DriveMode = 1;
+int SportMode = 0;
+int ChillMode = 0;
+int RegenMode = 0;
 
 //Inputs
 int soc;
@@ -125,74 +128,68 @@ void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
   if (buttonstate1 == LOW) {  // Sport
 
-    // change params. units in kW
-    PowerMax = 75;
-    RegenMax = 26;
-
     Serial.println("Changing to Sport mode");
-    DriveMode = 1;
+    SportMode = 1;
+  } else {
+    SportMode = 0;
   }
 
   byte buttonstate2 = digitalRead(ButtonRegen);
-  if (buttonstate2 == LOW) {  //Eco
+  if (buttonstate2 == LOW) {  //Regen
     Serial.println("Regen button Pressed");
 
-    // change params. units in kW
-    PowerMax = 75;
-    RegenMax = 26;
-
     Serial.println("Changing to Regen mode");
-    DriveMode = 2;
+    RegenMode = 1;
+  } else {
+    RegenMode = 0;
   }
-
   byte buttonstate3 = digitalRead(ButtonChill);
-  if (buttonstate3 == LOW) {  //Drift
+  if (buttonstate3 == LOW) {  //Chill
     Serial.println("Chill button Pressed");
 
-    // change params. units in kW
-    PowerMax = 75;
-    RegenMax = 26;
-
     Serial.println("Changing to Chill mode");
-    DriveMode = 3;
+    ChillMode = 1;
+  } else {
+    ChillMode = 0;
   }
 }
 void processlimits() {
   Regenlimit = batteryvoltage * chargecurrentlimit;
   Dischargelimit = batteryvoltage * dischargecurrentlimit;
+  if ((SportMode == 1 & ChillMode == 1) or (SportMode == 0 & ChillMode == 0)) {
+    DriveMode = 3;
+  } else if (SportMode == 1) {
+    DriveMode = 1;
+  } else if (ChillMode == 1) {
+    DriveMode = 2;
+  }
+
+  if (RegenMode == 1) {
+    RegenMax = 30;
+  } else {
+    RegenMax = 10;
+  }
+
+
   switch (DriveMode) {
     case 1:  //sport mode
-      PowerMax = 200;
-      RegenMax = 50;
-      if (PowerMax > Dischargelimit) {  //BMS overrides
-        PowerMax = Dischargelimit;
-      }
-      if (RegenMax > Regenlimit) {  //BMS overrides
-        RegenMax = Regenlimit;
-      }
+      PowerMax = 400;
       break;
 
-    case 2:  // regen mode
+    case 2:  // chill mode
       PowerMax = 50;
-      RegenMax = 15;
-      if (PowerMax > Dischargelimit) {  //BMS overrides
-        PowerMax = Dischargelimit;
-      }
-      if (RegenMax > Regenlimit) {  //BMS overrides
-        RegenMax = Regenlimit;
-      }
       break;
 
-    case 3:  // chill mode
-      PowerMax = 50;
-      RegenMax = 10;
-      if (PowerMax > Dischargelimit) {  //BMS overrides
-        PowerMax = Dischargelimit;
-      }
-      if (RegenMax > Regenlimit) {  //BMS overrides
-        RegenMax = Regenlimit;
-      }
+    case 3:  //default
+      PowerMax = 100;
       break;
+  }
+
+  if (PowerMax > Dischargelimit) {  //BMS overrides
+    PowerMax = Dischargelimit;
+  }
+  if (RegenMax > Regenlimit) {  //BMS overrides
+    RegenMax = Regenlimit;
   }
 
   uint8_t CTR1 = RegenMax >> 0;
@@ -203,30 +200,7 @@ void processlimits() {
   unsigned char Changemap5[8] = { CTR1, CTR2, CTR3, CTR4, 0x00, 0x00, 0x00, 0x00 };
   CAN.MCP_CAN::sendMsgBuf(Motorlimits, 0, 8, Changemap5);
 }
-void LightLED() {
-  switch (DriveMode) {
-    case 1:
-      digitalWrite(LightSport, HIGH);
-      digitalWrite(LightRegen, LOW);
-      digitalWrite(LightChill, LOW);
-      // Serial.println("sport light on");
-      break;
 
-    case 2:
-      digitalWrite(LightRegen, HIGH);
-      digitalWrite(LightSport, LOW);
-      digitalWrite(LightChill, LOW);
-      //  Serial.println("Eco light on");
-      break;
-
-    case 3:
-      digitalWrite(LightChill, HIGH);
-      digitalWrite(LightRegen, LOW);
-      digitalWrite(LightSport, LOW);
-      //  Serial.println("Drift light on");
-      break;
-  }
-}
 
 
 void loop() {
@@ -236,7 +210,6 @@ void loop() {
     myChrono.restart();           // restart the Chrono
     ButtonPress();
     processlimits();
-    LightLED();
   }
 }
 /*********************************************************************************************************
