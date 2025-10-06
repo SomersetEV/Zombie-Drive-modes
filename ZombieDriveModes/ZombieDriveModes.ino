@@ -43,9 +43,9 @@ mcp2515_can CAN(SPI_CS_PIN);  // Set CS pin
 
 //drive mode
 //input buttons
-#define ButtonSport 5
-#define ButtonRegen 4
-#define ButtonChill 3
+#define ButtonSport 3
+#define ButtonRegen 5
+#define ButtonChill 1
 
 // output for LEDs
 #define LightSport 6
@@ -173,7 +173,7 @@ void processlimits() {
 
   switch (DriveMode) {
     case 1:  //sport mode
-      PowerMax = 400;
+      PowerMax = 200;
       break;
 
     case 2:  // chill mode
