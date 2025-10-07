@@ -62,20 +62,20 @@ int RegenMode = 0;
 
 //Inputs
 int soc;
-int dischargevoltagelimit;
-int dischargecurrentlimit;
-int chargevoltagelimit;
-int chargecurrentlimit;
-int batteryvoltage;
+int32_t dischargevoltagelimit;
+int32_t dischargecurrentlimit;
+int32_t chargevoltagelimit;
+int32_t chargecurrentlimit;
+int32_t batteryvoltage;
 
 // parameter IDs
 int Motorlimits = 0x696;
 
 //Outputs
-int PowerMax;
-int RegenMax;
-int Regenlimit;
-int Dischargelimit;
+int32_t PowerMax;
+int32_t RegenMax;
+int32_t Regenlimit;
+int32_t Dischargelimit;
 
 
 
@@ -107,18 +107,21 @@ void canbusread() {
     CAN.readMsgBuf(&len, buf);               // read data,  len: data length, buf: data buf
 
     unsigned long canId = CAN.getCanId();
-    if (canId == 351) {
-      dischargevoltagelimit = ((uint16_t)buf[6] | ((uint16_t)buf[7] << 8)) * 10;  // in 0.1 scale
-      dischargecurrentlimit = ((uint16_t)buf[4] | ((uint16_t)buf[5] << 8)) * 10;  // in 0.1 scale
-      chargevoltagelimit = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 10;     // in 0.1 scale
-      chargecurrentlimit = ((uint16_t)buf[2] | ((uint16_t)buf[3] << 8)) * 10;     // in 0.1 scale
-      Serial.println("charge current limit");
-      Serial.print(chargecurrentlimit);
+    if (canId == 0x351) {
+      dischargevoltagelimit = ((uint16_t)buf[6] | ((uint16_t)buf[7] << 8)) * 0.1;  // in 0.1 scale
+      dischargecurrentlimit = ((uint16_t)buf[4] | ((uint16_t)buf[5] << 8)) * 0.1;  // in 0.1 scale
+      chargevoltagelimit = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 0.1;     // in 0.1 scale
+      chargecurrentlimit = ((uint16_t)buf[2] | ((uint16_t)buf[3] << 8)) * 0.1;     // in 0.1 scale
+      //SERIAL_PORT_MONITOR.print("discharge current limit: ");
+      //SERIAL_PORT_MONITOR.println(dischargecurrentlimit);
+      //SERIAL_PORT_MONITOR.print("charge voltage limit: ");
+      //SERIAL_PORT_MONITOR.println(chargevoltagelimit);
     }
-    if (canId == 356) {
-      batteryvoltage = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 10;  // in 0.1 scale
-      Serial.println("battery voltage:");
-      Serial.print(batteryvoltage);
+    if (canId == 0x356) {
+      batteryvoltage = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8)) * 0.1;  // in 0.1 scale
+      //SERIAL_PORT_MONITOR.print("battery voltage:");
+      //SERIAL_PORT_MONITOR.print(batteryvoltage);
+      //SERIAL_PORT_MONITOR.println("V");
     }
   }
 }
@@ -128,7 +131,7 @@ void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
   if (buttonstate1 == LOW) {  // Sport
 
-    Serial.println("Changing to Sport mode");
+    
     SportMode = 1;
   } else {
     SportMode = 0;
@@ -136,18 +139,18 @@ void ButtonPress() {
 
   byte buttonstate2 = digitalRead(ButtonRegen);
   if (buttonstate2 == LOW) {  //Regen
-    Serial.println("Regen button Pressed");
+    SERIAL_PORT_MONITOR.println("Regen button Pressed");
 
-    Serial.println("Changing to Regen mode");
+    
     RegenMode = 1;
   } else {
     RegenMode = 0;
   }
   byte buttonstate3 = digitalRead(ButtonChill);
   if (buttonstate3 == LOW) {  //Chill
-    Serial.println("Chill button Pressed");
+    SERIAL_PORT_MONITOR.println("Chill button Pressed");
 
-    Serial.println("Changing to Chill mode");
+    
     ChillMode = 1;
   } else {
     ChillMode = 0;
@@ -156,6 +159,10 @@ void ButtonPress() {
 void processlimits() {
   Regenlimit = batteryvoltage * chargecurrentlimit;
   Dischargelimit = batteryvoltage * dischargecurrentlimit;
+  Dischargelimit = Dischargelimit * 0.001;
+  Regenlimit = Regenlimit * 0.001;
+
+
   if ((SportMode == 1 & ChillMode == 1) or (SportMode == 0 & ChillMode == 0)) {
     DriveMode = 3;
   } else if (SportMode == 1) {
@@ -166,6 +173,7 @@ void processlimits() {
 
   if (RegenMode == 1) {
     RegenMax = 20;
+    SERIAL_PORT_MONITOR.println("Changing to Regen mode");
   } else {
     RegenMax = 10;
   }
@@ -174,10 +182,12 @@ void processlimits() {
   switch (DriveMode) {
     case 1:  //sport mode
       PowerMax = 200;
+      SERIAL_PORT_MONITOR.println("Changing to Sport mode");
       break;
 
     case 2:  // chill mode
       PowerMax = 50;
+      SERIAL_PORT_MONITOR.println("Changing to Chill mode");
       break;
 
     case 3:  //default
@@ -192,16 +202,24 @@ void processlimits() {
     RegenMax = Regenlimit;
   }
 
-  RegenMax = RegenMax * 0.01;
-  PowerMax = PowerMax * 0.01;
 
-  uint8_t CTR1 = RegenMax >> 0;
-  uint8_t CTR2 = RegenMax >> 8;
-  uint8_t CTR3 = PowerMax >> 0;
-  uint8_t CTR4 = PowerMax >> 8;
+  RegenMax = RegenMax * 100;
+  PowerMax = PowerMax * 100;
+
+  //  SERIAL_PORT_MONITOR.print("Sending regen limit: ");
+  //  SERIAL_PORT_MONITOR.println(RegenMax);
+  //  SERIAL_PORT_MONITOR.print("Sending Power limit:");
+  //  SERIAL_PORT_MONITOR.println(PowerMax);
+
+
+
+  uint8_t CTR1 = PowerMax >> 8;    // MSB of PowerMax first
+  uint8_t CTR2 = PowerMax & 0xFF;  // LSB second
+  uint8_t CTR3 = RegenMax >> 8;    // MSB of RegenMax first
+  uint8_t CTR4 = RegenMax & 0xFF;  // LSB second
 
   unsigned char Changemap5[8] = { CTR1, CTR2, CTR3, CTR4, 0x00, 0x00, 0x00, 0x00 };
-  CAN.MCP_CAN::sendMsgBuf(Motorlimits, 0, 8, Changemap5);
+  CAN.MCP_CAN::sendMsgBuf(0x696, 0, 8, Changemap5);  //0x696 is motor limits
 }
 
 
