@@ -165,7 +165,7 @@ void processlimits() {
   }
 
   if (RegenMode == 1) {
-    RegenMax = 30;
+    RegenMax = 20;
   } else {
     RegenMax = 10;
   }
@@ -191,6 +191,9 @@ void processlimits() {
   if (RegenMax > Regenlimit) {  //BMS overrides
     RegenMax = Regenlimit;
   }
+
+  RegenMax = RegenMax * 0.01;
+  PowerMax = PowerMax * 0.01;
 
   uint8_t CTR1 = RegenMax >> 0;
   uint8_t CTR2 = RegenMax >> 8;
