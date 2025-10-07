@@ -45,7 +45,7 @@ mcp2515_can CAN(SPI_CS_PIN);  // Set CS pin
 //input buttons
 #define ButtonSport 3
 #define ButtonRegen 5
-#define ButtonChill 1
+#define ButtonChill 7
 
 // output for LEDs
 #define LightSport 6
@@ -131,7 +131,7 @@ void ButtonPress() {
   byte buttonstate1 = digitalRead(ButtonSport);
   if (buttonstate1 == LOW) {  // Sport
 
-    
+    SERIAL_PORT_MONITOR.println("Sport button Pressed");
     SportMode = 1;
   } else {
     SportMode = 0;
@@ -172,10 +172,10 @@ void processlimits() {
   }
 
   if (RegenMode == 1) {
-    RegenMax = 20;
+    RegenMax = 10;
     SERIAL_PORT_MONITOR.println("Changing to Regen mode");
   } else {
-    RegenMax = 10;
+    RegenMax = 2;
   }
 
 
