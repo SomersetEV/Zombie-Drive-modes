@@ -172,10 +172,10 @@ void processlimits() {
   }
 
   if (RegenMode == 1) {
-    RegenMax = 10;
+    RegenMax = 20;
     SERIAL_PORT_MONITOR.println("Changing to Regen mode");
   } else {
-    RegenMax = 2;
+    RegenMax = 4;
   }
 
 
@@ -186,12 +186,12 @@ void processlimits() {
       break;
 
     case 2:  // chill mode
-      PowerMax = 50;
+      PowerMax = 75;
       SERIAL_PORT_MONITOR.println("Changing to Chill mode");
       break;
 
     case 3:  //default
-      PowerMax = 100;
+      PowerMax = 150;
       break;
   }
 
