@@ -219,11 +219,11 @@ void processlimits() {
 
   switch (DriveMode) {
     case 1:  //sport mode
-      PowerMax = 200;
+      PowerMax = 300;
       break;
 
     case 2:  // chill mode
-      PowerMax = 75;
+      PowerMax = 100;
       break;
 
     case 3:  //default
